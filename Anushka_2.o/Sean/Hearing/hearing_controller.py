@@ -326,7 +326,7 @@ def handle_quick_command(raw_query: str, normalized_query: str) -> bool:
     if gesture is not None:
         writeToHaath(gesture.code)
         reply = localized_reply(raw_query, gesture.reply)
-        speakAndGest(reply)
+        speak(reply)  # not speakAndGest: its keyword gestures would override this one
         log_reply(reply)
         add_history(raw_query, reply)
         return True

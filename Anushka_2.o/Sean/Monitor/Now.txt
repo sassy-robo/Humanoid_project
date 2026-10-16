@@ -1,2 +1,10 @@
-Query: Halo
+Query: All the configured systems are now running.
+Anooshka: That's great to hear! It sounds like everything is up and functioning well. If you need any assistance or have questions about the systems, feel free to ask!
+Query: सल्यूट नाव अनुष्का
 Anooshka: A very good evening! I am Anooshka. How may I help you?
+Query: سلیوٹ ناؤ
+Anooshka: Certainly. Saluting now.
+Query: تیرہ
+Anooshka: I'm here to assist you! How can I help you today?
+Query: ایک ایک ڈور نے ماری مار لی
+Anooshka: It seems like you might be quoting something or expressing a thought. Could you please provide more context or clarify what you mean? I'm here to help!

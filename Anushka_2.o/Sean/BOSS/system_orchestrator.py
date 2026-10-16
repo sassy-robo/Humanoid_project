@@ -32,6 +32,7 @@ from anushka_runtime.config import (
     module_script,
 )
 from anushka_runtime.ipc import append_message, open_reader, read_available, reset_runtime_state
+from Arms.essentialFunctions import arm_port_status, send_gesture
 from Speech.essentialFunctions import speak
 
 
@@ -190,6 +191,9 @@ def _print_startup_summary() -> None:
             a=AUX_MEGA_PORT or "(sim)",
         )
     )
+    for side, state in arm_port_status().items():
+        if state == "missing":
+            _console(f"WARNING: {side} arm Mega port is configured but the device is not plugged in.")
     if SMOKE_TEST:
         _console("ANUSHKA_SMOKE_TEST=on: orchestrator will exit after all modules report ready.")
 
@@ -256,6 +260,8 @@ def main() -> None:
             return
 
         if not SMOKE_TEST:
+            if "haath" in started:
+                send_gesture("open_arms")
             try:
                 speak("All the configured systems are now running.")
             except Exception:

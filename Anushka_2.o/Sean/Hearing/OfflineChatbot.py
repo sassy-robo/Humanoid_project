@@ -124,11 +124,11 @@ def OfflineChatbot(query: str) -> str:
         elif ListCheck(["medical", "infirmary", "doctor"], query):
             return "The campus medical room is near the administrative block. Please take the left pathway from reception and ask the security at the desk."
 
-    if ListCheck(["who is joint director", "joint director"], query):
-        return "The Joint Director of K I E T Group is Dr. Manoj Goyal."
+    if ListCheck(["who is Pro Pro Vice Chancellor  ", "Pro Pro Vice Chancellor  "], query):
+        return "The Pro Pro Vice Chancellor   of K I E T Group is Dr. Manoj Goyal."
 
     if ListCheck(["principal", "director"], query) and "k" in query:
-        return "The vision of K I E T is led by Dr. Manoj Goyal, our Joint Director, and Mr. Sachin Tyagi, the Assistant Dean of Research and Development."
+        return "The vision of K I E T is led by Dr. Manoj Goyal, our Pro Pro Vice Chancellor  , and Mr. Sachin Tyagi, the Assistant Dean of Research and Development."
 
     if ListCheck(["admission process", "how to take admission", "when admission"], query):
         return "The admission process for K I E T starts around may and june and lasts till august."

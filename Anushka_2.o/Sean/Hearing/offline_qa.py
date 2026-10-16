@@ -196,13 +196,13 @@ _STATIC_QA: list[tuple[list[str], list[str]]] = [
     ),
     # --- KIET leadership ---
     (
-        ["who is joint director", "who is the joint director", "joint director of kiet"],
-        ["The Joint Director of K I E T Group is Dr. Manoj Goyal."],
+        ["who is Pro Pro Vice Chancellor  ", "who is the Pro Pro Vice Chancellor  ", "Pro Pro Vice Chancellor   of kiet"],
+        ["The Pro Pro Vice Chancellor   of K I E T Group is Dr. Manoj Goyal."],
     ),
     (
         ["who is principal", "who is the director", "who leads kiet", "who is director of kiet", "kiet director"],
         [
-            "The vision of K I E T is led by Dr. Manoj Goyal, our Joint Director, and Mr. Sachin Tyagi, the Assistant Dean of Research and Development.",
+            "The vision of K I E T is led by Dr. Manoj Goyal, our Pro Pro Vice Chancellor  , and Mr. Sachin Tyagi, the Assistant Dean of Research and Development.",
         ],
     ),
     (

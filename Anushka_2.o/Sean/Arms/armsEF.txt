@@ -1,2 +1,4 @@
+Could not open left arm Mega (/dev/ttyACM0): [Errno 2] could not open port /dev/ttyACM0: [Errno 2] No such file or directory: '/dev/ttyACM0'. Running in simulation mode for that side.
+Could not open right arm Mega (/dev/ttyACM1): [Errno 16] could not open port /dev/ttyACM1: [Errno 16] Device or resource busy: '/dev/ttyACM1'. Running in simulation mode for that side.
 1
 2

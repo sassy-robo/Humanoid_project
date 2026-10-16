@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 
@@ -80,7 +81,8 @@ BY_NAME = {spec.name: spec for spec in GESTURES}
 
 
 def find_gesture_for_query(query: str) -> GestureSpec | None:
-    lowered = f" {query.strip().lower()} "
+    # STT adds punctuation ("Do salute."), so match on words only.
+    lowered = " " + " ".join(re.sub(r"[^\w\s]", " ", query.lower()).split()) + " "
     for spec in GESTURES:
         for phrase in spec.phrases:
             if f" {phrase.lower()} " in lowered:
@@ -95,3 +97,12 @@ def resolve_gesture(token: str) -> GestureSpec | None:
     if cleaned in BY_CODE:
         return BY_CODE[cleaned]
     return BY_NAME.get(cleaned)
+
+
+if __name__ == "__main__":
+    assert find_gesture_for_query("salute.").code == "12"
+    assert find_gesture_for_query("Do salute!").code == "12"
+    assert find_gesture_for_query("please, shake hands?").code == "3"
+    assert find_gesture_for_query("call me gesture").code == "30"
+    assert find_gesture_for_query("what is your name") is None
+    print("ok")

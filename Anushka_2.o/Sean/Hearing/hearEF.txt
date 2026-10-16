@@ -1,17 +1,33 @@
-Microphone: pulse (ANUSHKA_MIC_DEVICE_INDEX env override).
-Skipping ambient calibration: using fixed energy threshold (energy_threshold=300).
-Mic RMS sample: 694
+Microphone: pulse (matched ANUSHKA_MIC_NAME_HINT='pulse').
+Recognizer calibrated: dynamic=True, energy_threshold=2896.
+Mic RMS sample: 1650
 1
-Listening... (energy_threshold=300)
-Captured audio; transcribing...
-STT backend: google
-Listening... (energy_threshold=300)
+Listening... (energy_threshold=2896)
 Captured audio; transcribing...
 STT backend: openai
-Heard: Halo
-Normalized: hello.
+Heard: All the configured systems are now running.
+Normalized: all configured systems are now operational.
+Listening... (energy_threshold=1726)
+Captured audio; transcribing...
+STT backend: openai
+Heard: सल्यूट नाव अनुष्का
+Normalized: hello, my name is anushka.
 Offline Q&A hit (dynamic).
-Listening... (energy_threshold=300)
+Listening... (energy_threshold=1628)
+Captured audio; transcribing...
+STT backend: openai
+Heard: سلیوٹ ناؤ
+Normalized: salute now.
+Listening... (energy_threshold=1637)
 Captured audio; transcribing...
 STT backend: google
+Captured audio; transcribing...
+STT backend: openai
+Heard: تیرہ
+Normalized: thirteen
+Listening... (energy_threshold=1431)
+Captured audio; transcribing...
+STT backend: openai
+Heard: ایک ایک ڈور نے ماری مار لی
+Normalized: each thread has been struck down.
 2

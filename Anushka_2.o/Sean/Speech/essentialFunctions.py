@@ -150,6 +150,9 @@ try:
         engine.setProperty("voice", FEMALE_VOICE_ID)
     engine.setProperty("rate", max(110, min(220, TTS_RATE)))
     engine.setProperty("volume", max(0.1, min(1.0, TTS_VOLUME)))
+    # pyttsx3 2.99 + espeak-ng silently drops the first utterance; burn it on a blank.
+    engine.say(" ")
+    engine.runAndWait()
     TTS_AVAILABLE = True
 except Exception:
     engine = None

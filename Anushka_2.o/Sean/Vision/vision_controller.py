@@ -414,7 +414,7 @@ while True:
                             print(str(timeDelta))
                             if timeDelta.days > 30:
                                 writeToHaath("2")
-                                speak("I missed you so much sire ")
+                                speak("I missed you so much sir ")
 
                             else:
                                 writeToHaath("3")    #Shake hand gesture

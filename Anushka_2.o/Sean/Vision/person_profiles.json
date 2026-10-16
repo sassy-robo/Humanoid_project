@@ -29,10 +29,16 @@
     "gesture": "6",
     "aliases": ["beta ji"]
   },
-  "mama ji": {
-    "display_name": "Mama ji",
+  "kunwar ji": {
+    "display_name": "Kunwar ji",
     "greeting": "Hello there. Nice to meet you.",
     "gesture": "6",
-    "aliases": ["mama ji"]
-  }
+    "aliases": ["kunwar ji"]
+  },
+  "Thakur sahab": {
+    "display_name": "Priyanshu kumar",
+    "greeting": "Hello. Nice to meet you Priyanshu kumar.",
+    "gesture": "3",
+    "aliases": ["thakur sahab", "priyanshu"]
+}
 }

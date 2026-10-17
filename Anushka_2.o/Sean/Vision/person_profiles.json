@@ -40,5 +40,11 @@
     "greeting": "Hello. Nice to meet you Priyanshu kumar.",
     "gesture": "3",
     "aliases": ["thakur sahab", "priyanshu"]
-}
+  },
+  "hacker": {
+    "display_name": "Kartik",
+    "greeting": "Hello. Nice to meet you Kartik.",
+    "gesture": "3",
+    "aliases": ["hacker", "kartik"]
+  }
 }

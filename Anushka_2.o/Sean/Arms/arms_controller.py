@@ -191,7 +191,8 @@ def callMePalm():
 
 
 def homePos(ard):
-    setValsAll(ard, 90, 90, 90, 90)
+    # Rest pose: shoulder rotate 0, lift/elbow/wrist 90 (firmware mirrors the B servos).
+    setValsAll(ard, 0, 90, 90, 90)
 
 
 def shakeHand():
@@ -207,7 +208,7 @@ def Hi():
 
 
 def pointLeft():
-    homePos(lefth)
+    setValsAll(lefth, 90, 90, 90, 90)
 
 
 def countIt():
@@ -219,7 +220,7 @@ def thinkOnChin():
 
 
 def pointRight():
-    homePos(righth)
+    setValsAll(righth, 90, 90, 90, 90)
 
 
 def YawnStretch():

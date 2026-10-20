@@ -27,6 +27,23 @@ rightCommand = "ARM:90,90,90,90"
 lefth = None
 righth = None
 
+# Arm angles: (shoulder rotate, shoulder lift, elbow, wrist). Must match the
+# power-on pose in megaArmController.ino.
+REST = (0, 105, 90, 90)
+STEP_MS = 8         # board ms per degree (eased); lower = faster
+SLOW_STEP_MS = 12
+BOOT_TIMEOUT = 4.0  # seconds for the Mega to reset after the port opens
+MOVE_TIMEOUT = 8.0  # 180 degrees at 18 ms/step is ~3.3 s
+
+# Salute: (angles, pause after the move in seconds). The hold and the return
+# to REST come from the main loop: DownRight() runs HANDS_UPLIFT_TIME (6 s)
+# after the command arrived.
+SALUTE_STEPS = (
+    ((150, 105, 90, 90), 0.1),   # rotate shoulder forward
+    ((150, 100, 130, 90), 0.1),  # raise shoulder + bend elbow
+    ((150, 100, 105, 0), 0.0),   # straighten elbow a little, tilt wrist
+)
+
 _shutdown_requested = False
 
 
@@ -69,10 +86,26 @@ def _open_arm(port, side_label):
         _diag(f"{side_label} arm Mega port not configured. Running in simulation mode for that side.")
         return None
     try:
-        return serial.Serial(port, baudrate=9600, timeout=1)
+        board = serial.Serial(port, baudrate=9600, timeout=1)
     except Exception as exc:
         _diag(f"Could not open {side_label} arm Mega ({port}): {exc!s}. Running in simulation mode for that side.")
         return None
+    # Opening the port resets the Mega; wait for its READY before sending anything.
+    if not _wait_for(board, "READY", BOOT_TIMEOUT):
+        _diag(f"{side_label} arm Mega ({port}) did not say READY; is megaArmController.ino uploaded?")
+    return board
+
+
+def _wait_for(board, prefix, timeout):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            line = board.readline().decode("utf-8", errors="replace").strip()
+        except Exception:
+            return False
+        if line.startswith(prefix):
+            return True
+    return False
 
 
 lefth = _open_arm(LEFT_ARM_MEGA_PORT, "left")
@@ -80,17 +113,26 @@ righth = _open_arm(RIGHT_ARM_MEGA_PORT, "right")
 
 
 def setValsAll(ardObj, a1, a2, a3, a4, slow=False):
-    command = f"ARM:{a1},{a2},{a3},{a4}"
+    """a1 shoulder rotate, a2 shoulder lift, a3 elbow, a4 wrist (board mirrors lift/elbow B).
+
+    Blocks until the board reports the move finished, so steps run in order.
+    """
+    command = f"ARM:{a1},{a2},{a3},{a4},{SLOW_STEP_MS if slow else STEP_MS}"
 
     if ardObj is None:
         return
 
+    try:
+        ardObj.reset_input_buffer()  # drop replies to earlier HAND commands
+    except Exception:
+        pass
     if send_line(
         ardObj,
         command,
         "Arm Mega connection was interrupted recently. Please reattach it.",
     ):
-        time.sleep(0.25 if slow else 0.1)
+        if not _wait_for(ardObj, "OK", MOVE_TIMEOUT):
+            report_nonfatal(f"Arm Mega did not confirm {command} within {MOVE_TIMEOUT:.0f}s.")
         global leftCommand
         global rightCommand
         if ardObj == lefth:
@@ -191,8 +233,13 @@ def callMePalm():
 
 
 def homePos(ard):
-    # Rest pose: shoulder rotate 0, lift/elbow/wrist 90 (firmware mirrors the B servos).
-    setValsAll(ard, 0, 90, 90, 90)
+    setValsAll(ard, *REST)
+
+
+def run_steps(ard, steps):
+    for angles, pause in steps:
+        setValsAll(ard, *angles)
+        time.sleep(pause)
 
 
 def shakeHand():
@@ -247,15 +294,15 @@ def Seedha(ard):
 
 
 def salute():
-    setValsAll(righth, 150, 100, 105, 0, slow=True)
+    run_steps(righth, SALUTE_STEPS)
 
 
 def DownLeft():
-    setValsAll(lefth, 180, 0, 90, 90, slow=True)
+    setValsAll(lefth, *REST, slow=True)
 
 
 def DownRight():
-    setValsAll(righth, 0, 0, 90, 90, slow=True)
+    setValsAll(righth, *REST, slow=True)
 
 
 def holdBouquet():

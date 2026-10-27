@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SEAN_ROOT = Path(__file__).resolve().parents[1]
 DEPS_ROOT = REPO_ROOT / ".deps"
@@ -41,7 +43,7 @@ SMOKE_TEST = os.getenv("ANUSHKA_SMOKE_TEST", "").strip().lower() in {"1", "true"
 
 def _console(message: str) -> None:
     try:
-        sys.stderr.write(f"[boss] {message}\n")
+        sys.stderr.write(f"[boss] {' '.join(message.split())}\n")
         sys.stderr.flush()
     except Exception:
         pass
@@ -180,22 +182,25 @@ def _run_early_greeting() -> bool:
 
 
 def _print_startup_summary() -> None:
-    _console("---- Anushka runtime starting ----")
-    _console(f"OpenAI key configured: {bool(OPENAI_API_KEY)}")
-    _console(f"TTS engine: {TTS_ENGINE}")
-    _console(f"Vision enabled: {ENABLE_VISION}, Monitoring enabled: {ENABLE_MONITORING}")
-    _console(
-        "Serial ports — left arm: {l}, right arm: {r}, aux: {a}".format(
-            l=LEFT_ARM_MEGA_PORT or "(sim)",
-            r=RIGHT_ARM_MEGA_PORT or "(sim)",
-            a=AUX_MEGA_PORT or "(sim)",
-        )
+    port_warnings = [
+        f"{side} arm Mega is configured but not connected"
+        for side, state in arm_port_status().items()
+        if state == "missing"
+    ]
+    summary = (
+        "Runtime starting"
+        f" | OpenAI={'configured' if OPENAI_API_KEY else 'off'}"
+        f" | TTS={TTS_ENGINE}"
+        f" | Vision={'on' if ENABLE_VISION else 'off'}"
+        f" | Monitoring={'on' if ENABLE_MONITORING else 'off'}"
+        f" | Serial left={LEFT_ARM_MEGA_PORT or 'sim'},"
+        f" right={RIGHT_ARM_MEGA_PORT or 'sim'}, aux={AUX_MEGA_PORT or 'sim'}"
     )
-    for side, state in arm_port_status().items():
-        if state == "missing":
-            _console(f"WARNING: {side} arm Mega port is configured but the device is not plugged in.")
+    if port_warnings:
+        summary += f" | Warnings: {', '.join(port_warnings)}"
     if SMOKE_TEST:
-        _console("ANUSHKA_SMOKE_TEST=on: orchestrator will exit after all modules report ready.")
+        summary += " | Smoke test: on"
+    _console(summary)
 
 
 def main() -> None:

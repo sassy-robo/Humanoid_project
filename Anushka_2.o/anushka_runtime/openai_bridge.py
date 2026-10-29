@@ -2,15 +2,18 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Iterable
 
 from openai import OpenAI
 
 from .config import (
     CHAT_MODEL,
     ENABLE_LANGUAGE_MIRROR,
+    OPENAI_MAX_RETRIES,
     OPENAI_API_KEY,
     OPENAI_TRANSCRIBE_LANGUAGE,
+    OPENAI_TRANSCRIBE_PROMPT,
+    OPENAI_REQUEST_TIMEOUT,
     REPLY_LANGUAGE,
     TRANSCRIBE_MODEL,
     TTS_INSTRUCTIONS,
@@ -26,7 +29,15 @@ class OpenAIUnavailableError(RuntimeError):
 
 class OpenAIRobotBridge:
     def __init__(self, api_key: str = OPENAI_API_KEY) -> None:
-        self._client = OpenAI(api_key=api_key) if api_key else None
+        self._client = (
+            OpenAI(
+                api_key=api_key,
+                timeout=OPENAI_REQUEST_TIMEOUT,
+                max_retries=OPENAI_MAX_RETRIES,
+            )
+            if api_key
+            else None
+        )
 
     @property
     def available(self) -> bool:
@@ -171,6 +182,8 @@ class OpenAIRobotBridge:
             temp_audio.flush()
             with open(temp_audio.name, "rb") as file_obj:
                 kwargs = {"model": TRANSCRIBE_MODEL, "file": file_obj}
+                if OPENAI_TRANSCRIBE_PROMPT:
+                    kwargs["prompt"] = OPENAI_TRANSCRIBE_PROMPT
                 # If OPENAI_TRANSCRIBE_LANGUAGE is empty, let the service auto-detect.
                 if OPENAI_TRANSCRIBE_LANGUAGE and OPENAI_TRANSCRIBE_LANGUAGE.lower() != "auto":
                     kwargs["language"] = OPENAI_TRANSCRIBE_LANGUAGE
@@ -189,16 +202,5 @@ class OpenAIRobotBridge:
         if TTS_INSTRUCTIONS:
             kwargs["instructions"] = TTS_INSTRUCTIONS
 
-        # The SDK has exposed both streaming and file-write helpers across versions.
-        try:
-            with client.audio.speech.with_streaming_response.create(**kwargs) as response:
-                response.stream_to_file(output_path)
-            return
-        except Exception:
-            pass
-
-        response = client.audio.speech.create(**kwargs)
-        if hasattr(response, "write_to_file"):
-            response.write_to_file(output_path)
-        else:
-            output_path.write_bytes(response.read())
+        with client.audio.speech.with_streaming_response.create(**kwargs) as response:
+            response.stream_to_file(output_path)

@@ -4,7 +4,8 @@ This module loads the persona chat log and the institution knowledge log,
 parses them into a Q&A index, and exposes :func:`match_query` so the
 hearing controller can answer common questions WITHOUT contacting OpenAI.
 
-The match order is: exact phrase, keyword overlap, fuzzy similarity.
+The match order is: dynamic intents, exact phrase, multi-keyword overlap,
+fuzzy phrase similarity.
 Responses preserve the persona tone from chat_log_female.txt.
 """
 
@@ -196,15 +197,30 @@ _STATIC_QA: list[tuple[list[str], list[str]]] = [
     ),
     # --- KIET leadership ---
     (
-        ["who is Pro Pro Vice Chancellor  ", "who is the Pro Pro Vice Chancellor  ", "Pro Pro Vice Chancellor   of kiet"],
-        ["The Pro Pro Vice Chancellor   of K I E T Group is Dr. Manoj Goyal."],
+        ["who is Pro Vice Chancellor  ", "who is the Pro Vice Chancellor  ", "Pro Vice Chancellor   of kiet"],
+        ["The Pro Vice Chancellor   of K I E T Group is Dr. Manoj Goyal."],
     ),
     (
         ["who is principal", "who is the director", "who leads kiet", "who is director of kiet", "kiet director"],
         [
-            "The vision of K I E T is led by Dr. Manoj Goyal, our Pro Pro Vice Chancellor  , and Mr. Sachin Tyagi, the Assistant Dean of Research and Development.",
+            "The vision of K I E T is led by Dr. Manoj Goyal, our Pro Vice Chancellor  , and Mr. Sachin Tyagi, the Assistant Dean of Research and Development.",
         ],
     ),
+
+    (
+            ["who is vice chancellor", "who is the vc", "who is V C", "who is director of kiet", "kiet director"],
+            [
+                "The Vice Chancellor of K I E T Group is Professor Nagaraj Ramarao.",
+            ],
+    ),
+
+    (
+                ["who is H O D of E C E department", "who is the head of ece department", "who is hod of ece department", "who is head of the department of electronics and communication department", "ece hod"],
+                [
+                    "The H O D of E C E department is Professor Vibhav Sachaan.",
+                ],
+    ),
+
     (
         ["admission process", "how to take admission", "how to get admission in kiet", "when does admission start", "when admission"],
         [
@@ -422,19 +438,30 @@ class _OfflineQAIndex:
         query_kws = _keywords(query)
         if query_kws:
             best: tuple[float, list[str]] | None = None
-            for _entry_norm, entry_kws, answers in self._entries:
+            for _, entry_kws, answers in self._entries:
                 if not entry_kws:
                     continue
-                overlap = len(query_kws & entry_kws)
-                if overlap == 0:
+                matched_words = {
+                    word
+                    for word in query_kws
+                    if difflib.get_close_matches(word, entry_kws, n=1, cutoff=0.78)
+                }
+                overlap = len(matched_words)
+                if overlap < 2:
                     continue
-                score = overlap / max(len(entry_kws), 1)
-                if score >= 0.6 and (best is None or score > best[0]):
+                score = overlap / min(len(query_kws), len(entry_kws))
+                if score >= 0.5 and (best is None or score > best[0]):
                     best = (score, answers)
             if best is not None:
                 return True, random.choice(best[1]), "keyword"
 
-        close = difflib.get_close_matches(norm, self._normalized_keys, n=1, cutoff=0.78)
+        if len(query_kws) < 2:
+            return False, "", ""
+
+        phrase_keys = [
+            key for key in self._normalized_keys if len(_keywords(key)) >= 2
+        ]
+        close = difflib.get_close_matches(norm, phrase_keys, n=1, cutoff=0.72)
         if close:
             target = close[0]
             for entry_norm, _, answers in self._entries:

@@ -18,11 +18,11 @@
   Update the pin constants below to match your actual wiring.
 */
 
-const int JAW_PIN = 34;
-const int NECK_PIN = 35;
-const int TOP_LEFT_EYELID_PIN = 22;
-const int BOTTOM_LEFT_EYELID_PIN = 24;
-const int TOP_RIGHT_EYELID_PIN = 26;
+const int JAW_PIN = 3;
+const int NECK_PIN = 5;
+const int TOP_LEFT_EYELID_PIN = 6;
+const int BOTTOM_LEFT_EYELID_PIN = 9;
+const int TOP_RIGHT_EYELID_PIN = 6;
 const int BOTTOM_RIGHT_EYELID_PIN = 28;
 const int EYE_Y_PIN = 32;
 const int EYE_X_PIN = 30;

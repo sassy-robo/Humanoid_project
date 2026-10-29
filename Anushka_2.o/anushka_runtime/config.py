@@ -130,6 +130,12 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini"
 TRANSCRIBE_MODEL = os.getenv("OPENAI_TRANSCRIBE_MODEL", "gpt-4o-mini-transcribe").strip() or "gpt-4o-mini-transcribe"
 OPENAI_TRANSCRIBE_LANGUAGE = os.getenv("OPENAI_TRANSCRIBE_LANGUAGE", "").strip()
+OPENAI_TRANSCRIBE_PROMPT = os.getenv(
+    "OPENAI_TRANSCRIBE_PROMPT",
+    "The speaker is speaking English in India. Robot name: Anooshka. Institution: KIET Group of Institutions in Ghaziabad.",
+).strip()
+OPENAI_REQUEST_TIMEOUT = max(1.0, _float_env("OPENAI_REQUEST_TIMEOUT", 20.0))
+OPENAI_MAX_RETRIES = max(0, _int_env("OPENAI_MAX_RETRIES", 1) or 0)
 
 # Control reply language behavior.
 # - auto: keep legacy behavior (reply in the same language/script as the user's message)

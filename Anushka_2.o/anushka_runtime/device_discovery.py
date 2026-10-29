@@ -73,7 +73,7 @@ def _select() -> MicrophoneSelection:
     if MIC_NAME_HINT:
         hint = MIC_NAME_HINT.lower()
         for index, name in enumerate(names):
-            if hint in name.lower():
+            if hint in name.lower() and _try_open(index):
                 return MicrophoneSelection(index, name, f"matched ANUSHKA_MIC_NAME_HINT='{MIC_NAME_HINT}'")
 
     # Try the system default first; this is usually the right answer on a laptop.

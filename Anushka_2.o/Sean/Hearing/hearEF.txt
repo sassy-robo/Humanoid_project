@@ -1,33 +1,16 @@
-Microphone: pulse (matched ANUSHKA_MIC_NAME_HINT='pulse').
-Recognizer calibrated: dynamic=True, energy_threshold=2896.
-Mic RMS sample: 1650
+Microphone: ReSpeaker 4 Mic Array (UAC1.0): USB Audio (hw:1,0) (matched ANUSHKA_MIC_NAME_HINT='ReSpeaker').
+Microphone calibrated: dynamic=True, energy_threshold=803, RMS=474.
 1
-Listening... (energy_threshold=2896)
-Captured audio; transcribing...
-STT backend: openai
-Heard: All the configured systems are now running.
-Normalized: all configured systems are now operational.
-Listening... (energy_threshold=1726)
-Captured audio; transcribing...
-STT backend: openai
-Heard: सल्यूट नाव अनुष्का
-Normalized: hello, my name is anushka.
-Offline Q&A hit (dynamic).
-Listening... (energy_threshold=1628)
-Captured audio; transcribing...
-STT backend: openai
-Heard: سلیوٹ ناؤ
-Normalized: salute now.
-Listening... (energy_threshold=1637)
-Captured audio; transcribing...
-STT backend: google
-Captured audio; transcribing...
-STT backend: openai
-Heard: تیرہ
-Normalized: thirteen
-Listening... (energy_threshold=1431)
-Captured audio; transcribing...
-STT backend: openai
-Heard: ایک ایک ڈور نے ماری مار لی
-Normalized: each thread has been struck down.
+Transcription: OpenAI in 1.06s.
+Speech: heard='divulapiya' | command='divulapiya'
+Response generation completed in 2.04s.
+Speech playback completed in 9.36s.
+Transcription: OpenAI in 1.02s.
+Speech: heard='Doosalour' | command='doosalour'
+Response generation completed in 1.94s.
+Speech playback completed in 32.07s.
+Transcription: OpenAI in 1.35s.
+Speech: heard='Do salute. Do salute.' | command='do salute. do salute.'
+Transcription: OpenAI in 2.45s.
+Speech: heard='Shutdown.' | command='shutdown.'
 2

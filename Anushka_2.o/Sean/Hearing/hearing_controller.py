@@ -29,6 +29,7 @@ from anushka_runtime.config import (
     LOG_FILES,
     OPENWEATHER_API_KEY,
     OPENWEATHER_DEFAULT_CITY,
+    OPENAI_TRANSCRIBE_LANGUAGE,
     REPLY_LANGUAGE,
     RESOURCES_DIR,
     STATUS_FILES,
@@ -76,6 +77,7 @@ def _float_env(name: str, default: float) -> float:
 LISTEN_TIMEOUT_SECONDS = _float_env("ANUSHKA_LISTEN_TIMEOUT", 12.0)
 PHRASE_TIME_LIMIT_SECONDS = _float_env("ANUSHKA_PHRASE_TIME_LIMIT", 15.0)
 AMBIENT_CALIBRATION_SECONDS = _float_env("ANUSHKA_AMBIENT_CALIBRATION_SECONDS", 0.4)
+STT_REQUEST_TIMEOUT_SECONDS = _float_env("ANUSHKA_STT_TIMEOUT", 8.0)
 USE_DYNAMIC_ENERGY_THRESHOLD = _bool_env("ANUSHKA_DYNAMIC_ENERGY_THRESHOLD", True)
 ENERGY_THRESHOLD = _int_env("ANUSHKA_ENERGY_THRESHOLD", None)
 
@@ -106,6 +108,7 @@ def _raise_shutdown(signum, frame) -> None:
 
 def _diag(message: str) -> None:
     """Surface a human-readable diagnostic to the hearing status file and stderr."""
+    message = " ".join(message.split())
     append_message(STATUS_FILES["hear"], message)
     try:
         sys.stderr.write(f"[hearing] {message}\n")
@@ -163,62 +166,58 @@ def _build_recognizer() -> sr.Recognizer:
     recognizer.dynamic_energy_threshold = USE_DYNAMIC_ENERGY_THRESHOLD
     if ENERGY_THRESHOLD is not None:
         recognizer.energy_threshold = max(50, ENERGY_THRESHOLD)
-    recognizer.pause_threshold = 0.5
-    recognizer.non_speaking_duration = 0.3
+    recognizer.pause_threshold = 0.4
+    recognizer.non_speaking_duration = 0.2
+    recognizer.operation_timeout = STT_REQUEST_TIMEOUT_SECONDS
     return recognizer
 
 
 def _calibrate(recognizer: sr.Recognizer, mic: sr.Microphone) -> None:
     try:
         if ENERGY_THRESHOLD is not None and not USE_DYNAMIC_ENERGY_THRESHOLD:
-            if DEBUG_HEARING:
-                _diag(
-                    "Skipping ambient calibration: using fixed energy threshold "
-                    f"(energy_threshold={int(getattr(recognizer, 'energy_threshold', 0))})."
-                )
             with mic as source:
                 sample = recognizer.record(source, duration=0.4)
             raw = sample.get_raw_data()
             rms = audioop.rms(raw, 2) if raw else 0
             if DEBUG_HEARING:
-                _diag(f"Mic RMS sample: {rms}")
+                _diag(
+                    "Microphone calibrated with fixed threshold "
+                    f"(energy_threshold={int(getattr(recognizer, 'energy_threshold', 0))}, RMS={rms})."
+                )
             return
 
         with mic as source:
             recognizer.adjust_for_ambient_noise(source, duration=AMBIENT_CALIBRATION_SECONDS)
-            if DEBUG_HEARING:
-                _diag(
-                    "Recognizer calibrated: "
-                    f"dynamic={recognizer.dynamic_energy_threshold}, "
-                    f"energy_threshold={int(getattr(recognizer, 'energy_threshold', 0))}."
-                )
-
-            # Quick signal check: record a short sample and log its RMS.
-            # Helps detect when we've bound to a dead/loopback device.
             sample = recognizer.record(source, duration=0.4)
             raw = sample.get_raw_data()
             rms = audioop.rms(raw, 2) if raw else 0
             if DEBUG_HEARING:
-                _diag(f"Mic RMS sample: {rms}")
+                _diag(
+                    "Microphone calibrated: "
+                    f"dynamic={recognizer.dynamic_energy_threshold}, "
+                    f"energy_threshold={int(getattr(recognizer, 'energy_threshold', 0))}, RMS={rms}."
+                )
     except Exception as exc:
         _diag(f"Ambient calibration failed ({exc!s}). Using defaults.")
 
 
 def _transcribe(recognizer: sr.Recognizer, audio: sr.AudioData) -> str:
+    started = time.monotonic()
     if bridge.available:
         try:
             text = bridge.transcribe_wav(audio.get_wav_data())
             if text:
                 if DEBUG_HEARING:
-                    _diag("STT backend: openai")
+                    _diag(f"Transcription: OpenAI in {time.monotonic() - started:.2f}s.")
                 return text
         except Exception as exc:
             _diag(f"OpenAI transcription failed ({exc!s}); falling back to Google.")
 
     try:
+        text = recognizer.recognize_google(audio, language=GOOGLE_STT_LANGUAGE)
         if DEBUG_HEARING:
-            _diag("STT backend: google")
-        return recognizer.recognize_google(audio, language=GOOGLE_STT_LANGUAGE)
+            _diag(f"Transcription: Google in {time.monotonic() - started:.2f}s.")
+        return text
     except sr.UnknownValueError:
         return ""
     except sr.RequestError as exc:
@@ -232,6 +231,8 @@ def _transcribe(recognizer: sr.Recognizer, audio: sr.AudioData) -> str:
 def normalize_query(query: str) -> str:
     if not query:
         return query
+    if OPENAI_TRANSCRIBE_LANGUAGE.lower() == "en":
+        return query.lower()
     if bridge.available:
         try:
             return bridge.normalize_to_english(query).lower()
@@ -441,6 +442,37 @@ def reply_from_ai(raw_query: str) -> str:
     )
 
 
+def _get_response(raw_query: str, normalized_query: str) -> str:
+    started = time.monotonic()
+    try:
+        try:
+            reply = reply_from_ai(raw_query)
+        except OpenAIUnavailableError:
+            reply = OfflineChatbot(normalized_query) or offline_qa.generic_fallback()
+        except Exception as exc:
+            _diag(f"Chat reply failed ({exc!s}); using the offline fallback.")
+            reply = OfflineChatbot(normalized_query) or offline_qa.generic_fallback()
+
+        if not reply:
+            _diag("Chat returned an empty reply; using the offline fallback.")
+            reply = OfflineChatbot(normalized_query) or offline_qa.generic_fallback()
+        return reply
+    finally:
+        if DEBUG_HEARING:
+            _diag(f"Response generation completed in {time.monotonic() - started:.2f}s.")
+
+
+def _speak_response(reply: str) -> None:
+    started = time.monotonic()
+    try:
+        speakAndGest(reply)
+    except Exception as exc:
+        _diag(f"Speech output failed ({exc!s}).")
+    finally:
+        if DEBUG_HEARING:
+            _diag(f"Speech playback completed in {time.monotonic() - started:.2f}s.")
+
+
 def _read_pending_mode(reader, current_mode: str) -> str:
     """Drain any queued control messages, returning the latest mode."""
     latest = current_mode
@@ -483,7 +515,8 @@ def main() -> None:
     reader = open_reader(CONTROL_FILES["hear"])
     mode = "1"
     previous_mode = mode
-    last_listen_diag = 0.0
+    last_listen_error = ""
+    repeated_listen_errors = 0
 
     try:
         while True:
@@ -512,9 +545,6 @@ def main() -> None:
 
             try:
                 writeToEye("6")
-                if DEBUG_HEARING and (time.time() - last_listen_diag) > 5.0:
-                    _diag(f"Listening... (energy_threshold={int(getattr(recognizer, 'energy_threshold', 0))})")
-                    last_listen_diag = time.time()
                 with mic as source:
                     audio = recognizer.listen(
                         source,
@@ -523,9 +553,11 @@ def main() -> None:
                     )
                 # Visual blink: signals end-of-speech detected, transcription begins.
                 writeToEye("10")
-                if DEBUG_HEARING:
-                    _diag("Captured audio; transcribing...")
             except sr.WaitTimeoutError:
+                if last_listen_error:
+                    _diag(f"Microphone listening recovered after {repeated_listen_errors} repeated error(s).")
+                    last_listen_error = ""
+                    repeated_listen_errors = 0
                 if DEBUG_HEARING:
                     try:
                         with mic as source:
@@ -555,24 +587,29 @@ def main() -> None:
                 time.sleep(min(2.0, 0.2 * mic_failure_count))
                 continue
             except Exception as exc:
-                _diag(f"Unexpected listen error ({exc!s}).")
+                error = " ".join(str(exc).split())
+                repeated_listen_errors += 1
+                if error != last_listen_error:
+                    _diag(f"Microphone listen error ({error}); suppressing repeats until recovery.")
+                    last_listen_error = error
                 time.sleep(0.5)
                 continue
             else:
                 mic_failure_count = 0
+                if last_listen_error:
+                    _diag(f"Microphone listening recovered after {repeated_listen_errors} repeated error(s).")
+                    last_listen_error = ""
+                    repeated_listen_errors = 0
 
             query = _transcribe(recognizer, audio).strip()
             if not query:
                 continue
 
-            if DEBUG_HEARING:
-                _diag(f"Heard: {query[:200]}")
-
             log_query(query)
             normalized = normalize_query(query)
 
             if DEBUG_HEARING:
-                _diag(f"Normalized: {normalized[:200]}")
+                _diag(f"Speech: heard='{query[:120]}' | command='{normalized[:120]}'")
 
             if handle_quick_command(query, normalized):
                 continue
@@ -580,29 +617,13 @@ def main() -> None:
             offline_found, offline_reply, offline_source = offline_qa.match_query(normalized)
             if offline_found:
                 _diag(f"Offline Q&A hit ({offline_source}).")
-                try:
-                    speakAndGest(offline_reply)
-                except Exception as exc:
-                    _diag(f"Speech output failed ({exc!s}).")
+                _speak_response(offline_reply)
                 log_reply(offline_reply)
                 add_history(query, offline_reply)
                 continue
 
-            try:
-                reply = reply_from_ai(query)
-            except OpenAIUnavailableError:
-                reply = OfflineChatbot(normalized) or offline_qa.generic_fallback()
-            except Exception as exc:
-                _diag(f"Chat reply failed ({exc!s}).")
-                reply = "I am sorry, but I had trouble thinking through that just now."
-
-            if not reply:
-                continue
-
-            try:
-                speakAndGest(reply)
-            except Exception as exc:
-                _diag(f"Speech output failed ({exc!s}).")
+            reply = _get_response(query, normalized)
+            _speak_response(reply)
             log_reply(reply)
             add_history(query, reply)
     finally:

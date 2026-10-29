@@ -34,15 +34,8 @@ STEP_MS = 8         # board ms per degree (eased); lower = faster
 SLOW_STEP_MS = 12
 BOOT_TIMEOUT = 4.0  # seconds for the Mega to reset after the port opens
 MOVE_TIMEOUT = 8.0  # 180 degrees at 18 ms/step is ~3.3 s
-
-# Salute: (angles, pause after the move in seconds). The hold and the return
-# to REST come from the main loop: DownRight() runs HANDS_UPLIFT_TIME (6 s)
-# after the command arrived.
-SALUTE_STEPS = (
-    ((150, 105, 90, 90), 0.1),   # rotate shoulder forward
-    ((150, 100, 130, 90), 0.1),  # raise shoulder + bend elbow
-    ((150, 100, 105, 0), 0.0),   # straighten elbow a little, tilt wrist
-)
+PORT_OPEN_TIMEOUT = 3.0
+RECONNECT_INTERVAL = 5.0
 
 _shutdown_requested = False
 
@@ -76,8 +69,18 @@ def send_line(board, payload, disconnect_message):
     try:
         board.write(f"{payload}\n".encode("utf-8"))
         return True
-    except Exception:
+    except serial.SerialException:
         report_nonfatal(disconnect_message)
+        global lefth
+        global righth
+        if board is lefth:
+            lefth = None
+        elif board is righth:
+            righth = None
+        try:
+            board.close()
+        except serial.SerialException:
+            pass
         return False
 
 
@@ -85,14 +88,26 @@ def _open_arm(port, side_label):
     if not port:
         _diag(f"{side_label} arm Mega port not configured. Running in simulation mode for that side.")
         return None
-    try:
-        board = serial.Serial(port, baudrate=9600, timeout=1)
-    except Exception as exc:
-        _diag(f"Could not open {side_label} arm Mega ({port}): {exc!s}. Running in simulation mode for that side.")
-        return None
+    deadline = time.monotonic() + PORT_OPEN_TIMEOUT
+    last_error = None
+    while True:
+        try:
+            board = serial.Serial(port, baudrate=9600, timeout=1)
+            break
+        except serial.SerialException as exc:
+            last_error = exc
+            if time.monotonic() >= deadline:
+                _diag(f"Could not open {side_label} arm Mega ({port}): {last_error!s}. Will retry while running.")
+                return None
+            time.sleep(0.25)
     # Opening the port resets the Mega; wait for its READY before sending anything.
     if not _wait_for(board, "READY", BOOT_TIMEOUT):
         _diag(f"{side_label} arm Mega ({port}) did not say READY; is megaArmController.ino uploaded?")
+        try:
+            board.close()
+        except serial.SerialException:
+            pass
+        return None
     return board
 
 
@@ -110,6 +125,19 @@ def _wait_for(board, prefix, timeout):
 
 lefth = _open_arm(LEFT_ARM_MEGA_PORT, "left")
 righth = _open_arm(RIGHT_ARM_MEGA_PORT, "right")
+
+
+def _reconnect_missing_arms():
+    global lefth
+    global righth
+    if lefth is None and LEFT_ARM_MEGA_PORT:
+        lefth = _open_arm(LEFT_ARM_MEGA_PORT, "left")
+        if lefth is not None:
+            _diag("Left arm Mega reconnected.")
+    if righth is None and RIGHT_ARM_MEGA_PORT:
+        righth = _open_arm(RIGHT_ARM_MEGA_PORT, "right")
+        if righth is not None:
+            _diag("Right arm Mega reconnected.")
 
 
 def setValsAll(ardObj, a1, a2, a3, a4, slow=False):
@@ -293,10 +321,6 @@ def Seedha(ard):
         setValsAll(ard, 0, 90, 160, 0, slow=True)
 
 
-def salute():
-    run_steps(righth, SALUTE_STEPS)
-
-
 def DownLeft():
     setValsAll(lefth, *REST, slow=True)
 
@@ -382,8 +406,14 @@ def do_self_point():
 
 
 def do_salute():
-    salute()
-    salutePalm(1)
+    if not send_line(
+        righth,
+        "GESTURE:SALUTE",
+        "Could not start the right-arm salute because its Mega is disconnected.",
+    ):
+        return
+    if not _wait_for(righth, "OK", MOVE_TIMEOUT):
+        report_nonfatal(f"Right arm Mega did not finish GESTURE:SALUTE within {MOVE_TIMEOUT:.0f}s.")
 
 
 def do_jaadu_tona():
@@ -561,11 +591,16 @@ def main() -> None:
     chaalu = False
     special = False
     prevTime = time.time()
+    next_reconnect_attempt = time.monotonic() + RECONNECT_INTERVAL
 
     try:
         while True:
             if _shutdown_requested:
                 break
+
+            if time.monotonic() >= next_reconnect_attempt:
+                _reconnect_missing_arms()
+                next_reconnect_attempt = time.monotonic() + RECONNECT_INTERVAL
 
             newRead = read_available(haathWS)
             newTime = time.time()
@@ -611,6 +646,11 @@ def main() -> None:
             special = newRead == "6"
 
             execute_gesture(newRead)
+            if newRead == "12":
+                # The Mega completes the salute and returns to HOME before its
+                # acknowledgement, so don't schedule a second delayed home.
+                chaalu = False
+                continue
 
             time.sleep(0.2)
     finally:

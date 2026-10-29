@@ -1,10 +1,8 @@
-Query: All the configured systems are now running.
-Anooshka: That's great to hear! It sounds like everything is up and functioning well. If you need any assistance or have questions about the systems, feel free to ask!
-Query: सल्यूट नाव अनुष्का
-Anooshka: A very good evening! I am Anooshka. How may I help you?
-Query: سلیوٹ ناؤ
+Query: divulapiya
+Anooshka: I'm sorry, but I don't understand the term "divulapiya." Could you please clarify or provide more context?
+Query: Doosalour
+Anooshka: It seems like there might be a misunderstanding or a typo in your message. Could you please clarify what you mean by "Doosalour"? I'm here to help!
+Query: Do salute. Do salute.
 Anooshka: Certainly. Saluting now.
-Query: تیرہ
-Anooshka: I'm here to assist you! How can I help you today?
-Query: ایک ایک ڈور نے ماری مار لی
-Anooshka: It seems like you might be quoting something or expressing a thought. Could you please provide more context or clarify what you mean? I'm here to help!
+Query: Shutdown.
+Anooshka: Goodbye. Shutting the system down now.

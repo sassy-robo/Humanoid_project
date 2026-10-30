@@ -271,7 +271,7 @@ def run_steps(ard, steps):
 
 
 def shakeHand():
-    setValsAll(righth, 120, 90, 75, 110, slow=True)
+    setValsAll(righth, 120, 0, 75, 110, slow=True)
 
 
 def take():
